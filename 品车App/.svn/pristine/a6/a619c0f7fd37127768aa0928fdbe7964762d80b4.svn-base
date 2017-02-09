@@ -1,0 +1,57 @@
+//
+//  FavoriteTableViewController.m
+//  品车App
+//
+//  Created by fei on 16/11/17.
+//  Copyright © 2016年 fei. All rights reserved.
+//
+
+#import "FavoriteTableViewController.h"
+#import "FavoriteTableViewCell.h"
+
+@interface FavoriteTableViewController ()
+
+@end
+
+@implementation FavoriteTableViewController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.title = @"我的收藏";
+    self.tableView.tableFooterView = [[UIView alloc]init];
+    self.tableView.backgroundColor = [UIColor colorWithRed:245/255.0 green:245/255.0 blue:245/255.0 alpha:1.0];
+}
+
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+#pragma mark - Table view data source
+
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
+    return 1;
+}
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    return 2;
+}
+
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    FavoriteTableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"favoriteCell"];
+    if (!cell) {
+        cell = [[FavoriteTableViewCell alloc]initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"favoriteCell"];
+    }
+    cell.mainLabe.text = @"开启奔驰互联驾驶新世界的大门";
+    cell.subLabe.text = @"精彩活动";
+    cell.dateLabe.text = @"2016-11-17";
+    return cell;
+}
+
+-(CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    return 65;
+}
+
+@end

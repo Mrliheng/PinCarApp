@@ -1,0 +1,261 @@
+//
+//  CityTableViewController.m
+//  品车App
+//
+//  Created by zt on 16/10/17.
+//  Copyright © 2016年 fei. All rights reserved.
+//
+
+#import "CityTableViewController.h"
+
+#import <CoreLocation/CoreLocation.h>
+@interface CityTableViewController ()<CLLocationManagerDelegate>
+{
+    CLLocationManager *_locationManager;
+    
+    NSMutableArray *_cityArray;
+}
+//当前定位城市
+@property (nonatomic,copy) NSString * cityName;
+@end
+
+@implementation CityTableViewController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    
+    [self getData];
+    self.navigationItem.title = @"选择城市";
+    self.navigationController.view.backgroundColor = [UIColor whiteColor];
+    if ([_cityName isEqualToString:@"城市"]) {
+        _cityName = @"正在定位";
+        
+    }
+    self.tableView.sectionIndexColor = [UIColor colorWithRed:249/255.0 green:66/255.0 blue:71/255.0 alpha:1];
+    [self startLocating];
+    [self createItem];
+    self.tableView.tableFooterView = [[UIView alloc]init];
+    
+}
+-(void)createItem{
+    
+    UIButton *backBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+    [backBtn setBackgroundImage:[UIImage imageNamed:@"close"] forState:UIControlStateNormal];
+    [backBtn setBackgroundImage:[UIImage imageNamed:@"close"] forState:UIControlStateHighlighted];
+    backBtn.frame = CGRectMake(0, 0, 15, 15);
+    [backBtn addTarget:self action:@selector(backHome) forControlEvents:UIControlEventTouchUpInside];
+    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc]initWithCustomView:backBtn];
+    
+}
+-(void)getData{
+    
+    _cityArray = [NSMutableArray array];
+    NSString *Path = [[NSBundle mainBundle]pathForResource:@"city" ofType:@"json"];
+    _cityArray = [NSJSONSerialization JSONObjectWithData:[NSData dataWithContentsOfFile:Path] options:NSJSONReadingAllowFragments error:nil];
+    [self.tableView reloadData];
+}
+-(void)backHome{
+    
+    [self dismissViewControllerAnimated:YES completion:nil];
+}
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+#pragma mark - Table view data source
+
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
+#warning Incomplete implementation, return the number of sections;
+    return 1+_cityArray.count;
+}
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+#warning Incomplete implementation, return the number of rows
+    if (section == 0) {
+        return 1;
+    }
+    else{
+        NSDictionary *firstLetter = _cityArray[section-1];
+        NSArray *city = firstLetter[@"city"];
+        return city.count;
+        
+    }
+}
+-(UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath{
+    
+    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"cell"];
+    if (!cell) {
+        cell = [[UITableViewCell alloc]initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"cell"];
+    }
+    if (indexPath.section == 0) {
+        cell.textLabel.text = _cityName;
+        cell.textLabel.textColor = [UIColor colorWithRed:249/255.0 green:66/255.0 blue:71/255.0 alpha:1];
+
+    }
+    else{
+        NSDictionary *firstLetter = _cityArray[indexPath.section-1];
+        NSArray *city = firstLetter[@"city"];
+        NSDictionary *dic = city[indexPath.row];
+        cell.textLabel.text = dic[@"name"];
+        cell.textLabel.textColor = [UIColor blackColor];
+    }
+    return cell;
+}
+
+-(NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section{
+    if (section == 0) {
+        return @"已定位当前城市";
+
+    }
+    else{
+        NSDictionary *firstLetter = _cityArray[section-1];
+        NSString *letter = firstLetter[@"firstLetter"];
+        return letter;
+
+    }
+
+}
+-(NSArray<NSString *> *)sectionIndexTitlesForTableView:(UITableView *)tableView{
+    
+    NSMutableArray *arr = [NSMutableArray arrayWithObject:@""];
+    for (NSDictionary *subDic in _cityArray) {
+        
+        [arr addObject:subDic[@"firstLetter"]];
+    }
+    return arr;
+}
+-(void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath{
+    if(indexPath.section == 0){
+        
+        if ([_cityName isEqualToString:@"定位失败，点击重试"]) {
+            
+            [self startLocating];
+        }
+        else if(![_cityName isEqualToString:@"正在定位"]){
+            self.locationBlock(_cityName);
+            [self dismissViewControllerAnimated:YES completion:nil];
+
+        }
+        return;
+    }
+    
+    //cell赋值
+    NSDictionary *firstLetter = _cityArray[indexPath.section-1];
+    NSArray *city = firstLetter[@"city"];
+    NSDictionary *dic = city[indexPath.row];
+    NSString *cityName = dic[@"name"];
+    self.locationBlock(cityName);
+    //修改首页地址
+    [self dismissViewControllerAnimated:YES completion:nil];
+}
+
+#pragma mark --开启定位
+-(void)startLocating{
+    
+    if ([CLLocationManager locationServicesEnabled]) {
+        
+        _locationManager = [[CLLocationManager alloc]init];
+        
+        //设置定位的精度
+        [_locationManager setDesiredAccuracy:kCLLocationAccuracyBest];
+        //设置距离筛选器distanceFilter，下面表示设备至少移动100米，才通知委托更新
+        _locationManager.distanceFilter = 100.0f;
+        _locationManager.delegate = self;
+        if ([[[UIDevice currentDevice] systemVersion] floatValue] > 8.0)
+        {
+            [_locationManager requestAlwaysAuthorization];
+            [_locationManager requestWhenInUseAuthorization];
+        }
+        //开始实时定位
+        [_locationManager startUpdatingLocation];
+    }
+}
+-(void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status
+{
+    NSLog(@"Longitude = %f", manager.location.coordinate.longitude);
+    NSLog(@"Latitude = %f", manager.location.coordinate.latitude);
+    [_locationManager stopUpdatingLocation];
+    
+    CLGeocoder * geoCoder = [[CLGeocoder alloc] init];
+    [geoCoder reverseGeocodeLocation:manager.location completionHandler:^(NSArray *placemarks, NSError *error) {
+        if (placemarks.count <= 0) {
+            _cityName = @"定位失败，点击重试";
+            [self.tableView reloadData];
+        }
+        for (CLPlacemark * placemark in placemarks) {
+            NSDictionary *test = [placemark addressDictionary];
+            //  Country(国家)  State(城市)  SubLocality(区)
+            NSLog(@"%@", [test objectForKey:@"Country"]);
+            NSLog(@"%@", [test objectForKey:@"State"]);
+            if([[test objectForKey:@"State"] isEqualToString:@"北京市"] || [[test objectForKey:@"State"] isEqualToString:@"重庆市"] || [[test objectForKey:@"State"] isEqualToString:@"天津市"] || [[test objectForKey:@"State"] isEqualToString:@"上海市"]){
+                
+                _cityName = [test objectForKey:@"State"];
+                
+            }
+            else{
+                _cityName = [test objectForKey:@"SubLocality"];
+                
+            }
+            NSLog(@"%@", [test objectForKey:@"SubLocality"]);
+            [self.tableView reloadData];
+            NSLog(@"%@", [test objectForKey:@"Street"]);
+        }
+    }];
+}
+
+/*
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:<#@"reuseIdentifier"#> forIndexPath:indexPath];
+    
+    // Configure the cell...
+    
+    return cell;
+}
+*/
+
+/*
+// Override to support conditional editing of the table view.
+- (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath {
+    // Return NO if you do not want the specified item to be editable.
+    return YES;
+}
+*/
+
+/*
+// Override to support editing the table view.
+- (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath {
+    if (editingStyle == UITableViewCellEditingStyleDelete) {
+        // Delete the row from the data source
+        [tableView deleteRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
+    } else if (editingStyle == UITableViewCellEditingStyleInsert) {
+        // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view
+    }   
+}
+*/
+
+/*
+// Override to support rearranging the table view.
+- (void)tableView:(UITableView *)tableView moveRowAtIndexPath:(NSIndexPath *)fromIndexPath toIndexPath:(NSIndexPath *)toIndexPath {
+}
+*/
+
+/*
+// Override to support conditional rearranging of the table view.
+- (BOOL)tableView:(UITableView *)tableView canMoveRowAtIndexPath:(NSIndexPath *)indexPath {
+    // Return NO if you do not want the item to be re-orderable.
+    return YES;
+}
+*/
+
+/*
+#pragma mark - Navigation
+
+// In a storyboard-based application, you will often want to do a little preparation before navigation
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
+    // Get the new view controller using [segue destinationViewController].
+    // Pass the selected object to the new view controller.
+}
+*/
+
+@end

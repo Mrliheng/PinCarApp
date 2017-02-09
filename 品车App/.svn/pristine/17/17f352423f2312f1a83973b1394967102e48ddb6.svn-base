@@ -1,0 +1,192 @@
+//
+//  MiddleViewController.m
+//  品车App
+//
+//  Created by zt on 2016/10/21.
+//  Copyright © 2016年 fei. All rights reserved.
+//
+
+#import "MiddleViewController.h"
+#import "BHBCustomBtn.h"
+#import "SalesTableViewController.h"
+#import "MyQrcodeViewController.h"
+#import "NavigationController.h"
+#import "TabBarViewController.h"
+#import "ServiceRepresentativeTableViewController.h"
+
+
+#define baseTag 100
+#define bottomHeight 100
+#define xSpace 30
+#define buttonHeight 101  //根据BHBCustomBtn里面的图标和文字高度变化
+#define buttonWidth ([UIScreen mainScreen].bounds.size.width - xSpace*3)/2
+#define btnSpace ([UIScreen mainScreen].bounds.size.width - (buttonHeight - 30)*2)/3.0
+#define ySpace 10
+@interface MiddleViewController ()
+
+@end
+
+@implementation MiddleViewController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    
+    //背景颜色在TabBarViewController里面设置
+    [self createUI];
+}
+
+-(void)createUI{
+    
+    UIView *topView = [UIView new];
+    topView.backgroundColor = [UIColor clearColor];
+    [self.view addSubview:topView];
+    
+    //中间的按钮view
+    UIView *buttonView = [UIView new];
+    buttonView.backgroundColor = [UIColor clearColor];
+    [self.view addSubview:buttonView];
+    
+    //关闭此页面的按钮
+    UIButton *closeBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+    [closeBtn setImage:[UIImage imageNamed:@"close"] forState:UIControlStateNormal];
+    [closeBtn addTarget:self action:@selector(backHome) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:closeBtn];
+    closeBtn.sd_layout
+    .bottomSpaceToView(self.view,40)
+    .widthIs(200)
+    .heightIs(100)
+    .centerXIs(self.view.centerX);
+    
+    buttonView.sd_layout
+    .bottomSpaceToView(closeBtn,xSpace)
+    .leftSpaceToView(self.view,0)
+    .rightSpaceToView(self.view,0)
+    .heightIs(buttonHeight * 2 + xSpace * 3);
+    
+//    NSArray *imageArr = @[@"20-1",@"20-2",@"20-3",@"20-4",@"20-5"];
+//    NSArray *titleArr = @[@"品行",@"直播",@"VR",@"二维码",@"分享"];
+    NSArray *imageArr = @[@"20-1",@"20-2",@"20-3",@"20-4"];
+    NSArray *titleArr = @[@"销售代表",@"售后代表",@"发贴",@"邀请码"];
+//    NSArray *imageArr = @[@"20-1",@"20-4"];
+//    NSArray *titleArr = @[@"品行",@"二维码"];
+    for (int i=0; i<imageArr.count; i++) {
+        
+        BHBCustomBtn *btn = [BHBCustomBtn buttonWithType:UIButtonTypeCustom];
+        [btn setImage:[UIImage imageNamed:imageArr[i]] forState:UIControlStateNormal];
+        [btn setTitle:titleArr[i] forState:UIControlStateNormal];
+        [btn setTitleColor:[UIColor colorWithRed:79/255.0 green:48/255.0 blue:134/255.0 alpha:1] forState:UIControlStateNormal];
+        btn.titleLabel.font = [UIFont systemFontOfSize:14];
+        btn.titleLabel.textAlignment = NSTextAlignmentCenter;
+        [buttonView addSubview:btn];
+        
+        btn.sd_layout
+        .leftSpaceToView(buttonView,btnSpace + i%2* (buttonHeight - 30 + btnSpace))
+        .topSpaceToView(buttonView, xSpace + i/2 * (buttonHeight + ySpace))
+//        .topSpaceToView(buttonView, (buttonHeight * 2 + xSpace * 3)/2.0 - buttonHeight/2.0)
+        .heightIs(buttonHeight)
+        .widthIs(buttonHeight - 30 );
+        btn.tag = baseTag+i;
+        [btn addTarget:self action:@selector(btnClick:) forControlEvents:UIControlEventTouchUpInside];
+    }
+    
+    topView.sd_layout
+    .bottomSpaceToView(buttonView,xSpace)
+    .leftSpaceToView(self.view,0)
+    .rightSpaceToView(self.view,0)
+    .topSpaceToView(self.view,0);
+    
+}
+
+-(void)btnClick:(UIButton *)btn{
+    
+    switch (btn.tag - baseTag) {
+        case 0:
+        {
+            //销售代表
+            [self dismissViewControllerAnimated:YES completion:nil];
+            
+            TabBarViewController *tabBar= (TabBarViewController *)self.presentingViewController;
+            tabBar.selectedIndex = 3;
+            
+            ServiceRepresentativeTableViewController *ser = [[ServiceRepresentativeTableViewController alloc]init];
+            ser.navcTitle = @"专属代表";
+            [tabBar.selectedViewController pushViewController:ser animated:YES];
+            
+            //销售代表
+            SalesTableViewController *sales = [[SalesTableViewController alloc]init];
+            sales.navTitle = @"销售代表";
+            [tabBar.selectedViewController pushViewController:sales animated:YES];
+            
+
+        }
+            break;
+        case 1:
+        {
+
+            //售后
+            [self dismissViewControllerAnimated:YES completion:nil];
+            
+            TabBarViewController *tabBar= (TabBarViewController *)self.presentingViewController;
+            tabBar.selectedIndex = 3;
+            
+            ServiceRepresentativeTableViewController *ser = [[ServiceRepresentativeTableViewController alloc]init];
+            ser.navcTitle = @"专属代表";
+            [tabBar.selectedViewController pushViewController:ser animated:YES];
+            
+            //售后
+            SalesTableViewController *sales = [[SalesTableViewController alloc]init];
+            sales.navTitle = @"售后";
+            sales.group = @"售后";
+            [tabBar.selectedViewController pushViewController:sales animated:YES];
+            
+        }
+            break;
+        case 2:
+        {
+            //发贴
+          
+            
+        }
+            break;
+        case 3:
+        {
+            //邀请码
+            MyQrcodeViewController *qr = [[MyQrcodeViewController alloc]init];
+            NavigationController *navc = [[NavigationController alloc]initWithRootViewController:qr];
+            
+
+            [self dismissViewControllerAnimated:YES completion:nil];
+
+            [self.presentingViewController presentViewController:navc animated:YES completion:^{
+            }];
+        
+            
+        
+
+        }
+            break;
+            
+        default:
+            break;
+    }
+}
+-(void)backHome{
+    
+    [self dismissViewControllerAnimated:YES completion:nil];
+}
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+/*
+#pragma mark - Navigation
+
+// In a storyboard-based application, you will often want to do a little preparation before navigation
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
+    // Get the new view controller using [segue destinationViewController].
+    // Pass the selected object to the new view controller.
+}
+*/
+
+@end

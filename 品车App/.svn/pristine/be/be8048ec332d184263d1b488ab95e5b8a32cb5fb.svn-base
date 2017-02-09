@@ -1,0 +1,155 @@
+//
+//  qrCodeViewController.m
+//  品车App
+//
+//  Created by zt on 2016/11/14.
+//  Copyright © 2016年 fei. All rights reserved.
+//
+
+#import "qrCodeViewController.h"
+#import "XMGQRCodeTool.h"
+
+#import <AVFoundation/AVFoundation.h>
+
+
+
+@interface qrCodeViewController ()<AVCaptureMetadataOutputObjectsDelegate>
+
+@property (strong, nonatomic) UIView *scanBackView;
+
+@property (strong, nonatomic) NSLayoutConstraint *toBottom;
+
+@end
+
+@implementation qrCodeViewController
+-(void)viewWillAppear:(BOOL)animated{
+    
+    [super viewWillAppear:animated];
+    [self createItem];
+//    self.navigationController.navigationBarHidden = YES;
+}
+//-(void)viewWillDisappear:(BOOL)animated{
+//    
+//    [super viewWillDisappear:animated];
+//    self.navigationController.navigationBarHidden = NO;
+//}
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    
+    [ConfigureSetting setViewControllerTitleWithTextColor:@"扫描二维码" color:[UIColor whiteColor] targetCtrl:self];
+    self.navigationController.navigationBar.barStyle = UIBarStyleBlack;
+
+    
+    [self scan];
+    
+//    [self beginScanAnimation];
+//    [self beginScan];
+    
+}
+-(void)createItem{
+    
+    NSString *navcBack = @"navigationBarBG";
+    if (SCREEN_WIDTH>375) {
+        navcBack = @"navigationBarBGPlus";
+    }
+    [self.navigationController.navigationBar setBackgroundImage:[UIImage imageNamed:navcBack] forBarMetrics:UIBarMetricsDefault];
+    
+    UIButton *backBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+    [backBtn setBackgroundImage:[UIImage imageNamed:@"back"] forState:UIControlStateNormal];
+    [backBtn setBackgroundImage:[UIImage imageNamed:@"back"] forState:UIControlStateHighlighted];
+    backBtn.frame = CGRectMake(0, 0, 15, 10);
+    [backBtn addTarget:self action:@selector(back) forControlEvents:UIControlEventTouchUpInside];
+    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc]initWithCustomView:backBtn];
+    
+}
+-(void)back{
+    [self.navigationController popViewControllerAnimated:YES];
+}
+-(void)scan{
+    // 1.创建捕捉会话
+    AVCaptureSession *session = [[AVCaptureSession alloc] init];
+    
+    // 2.设置输入设备
+    AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
+    AVCaptureDeviceInput *inputDevice = [AVCaptureDeviceInput deviceInputWithDevice:device error:nil];
+    [session addInput:inputDevice];
+    
+    // 3.设置输入方式
+    AVCaptureMetadataOutput *output = [[AVCaptureMetadataOutput alloc] init];
+    [output setMetadataObjectsDelegate:self queue:dispatch_get_main_queue()];
+    [session addOutput:output];
+    [output setMetadataObjectTypes:@[AVMetadataObjectTypeQRCode]];
+    
+    // 4.添加一个显示的layer
+    AVCaptureVideoPreviewLayer *layer = [[AVCaptureVideoPreviewLayer alloc] initWithSession:session];
+    layer.frame = self.view.bounds;
+    [self.view.layer addSublayer:layer];
+    
+    // 5.开始扫描
+    [session startRunning];
+}
+
+#pragma mark - 获取扫描结果
+- (void)captureOutput:(AVCaptureOutput *)captureOutput didOutputMetadataObjects:(NSArray *)metadataObjects fromConnection:(AVCaptureConnection *)connection
+{
+    if (metadataObjects.count > 0) {
+        AVMetadataMachineReadableCodeObject *object = [metadataObjects lastObject];
+        NSLog(@"%@", object.stringValue);
+        self.block(object.stringValue);
+        [self.navigationController popViewControllerAnimated:YES];
+    }
+}
+
+// 开始扫描
+- (void)beginScan
+{
+    
+    [XMGQRCodeTool sharedXMGQRCodeTool].isDrawQRCodeRect = YES;
+    [[XMGQRCodeTool sharedXMGQRCodeTool] setInsteretRect:self.scanBackView.frame];
+    [[XMGQRCodeTool sharedXMGQRCodeTool] beginScanInView:self.view result:^(NSArray<NSString *> *resultStrs) {
+        NSLog(@"%@", resultStrs);
+        [[XMGQRCodeTool sharedXMGQRCodeTool] stopScan];
+        
+    }];
+    
+    
+    
+}
+
+
+
+// 开始扫描动画
+- (void)beginScanAnimation
+{
+    self.toBottom.constant = self.scanBackView.frame.size.height;
+    [self.view layoutIfNeeded];
+    
+    
+    [UIView animateWithDuration:2 animations:^{
+        [UIView setAnimationRepeatCount:CGFLOAT_MAX];
+        self.toBottom.constant = - self.scanBackView.frame.size.height;
+        [self.view layoutIfNeeded];
+        
+    }];
+    
+    
+}
+
+
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+/*
+#pragma mark - Navigation
+
+// In a storyboard-based application, you will often want to do a little preparation before navigation
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
+    // Get the new view controller using [segue destinationViewController].
+    // Pass the selected object to the new view controller.
+}
+*/
+
+@end

@@ -1,0 +1,396 @@
+//
+//  PersonalViewController.m
+//  品车App
+//
+//  Created by fei on 16/10/17.
+//  Copyright © 2016年 fei. All rights reserved.
+//
+
+#import "PersonalViewController.h"
+#import "PersonCollectionViewCell.h"
+#import "SetViewController.h"
+#import "PersonaldataTableViewController.h"
+#import "ServiceRepresentativeTableViewController.h"
+#import "CheckPhoneViewController.h"
+#import "EmulatorViewController.h"
+#import "MyCarViewController.h"
+#import "MyMessageTableViewController.h"
+#import "FavoriteTableViewController.h"
+
+@interface PersonalViewController ()<UICollectionViewDelegate,UICollectionViewDataSource,UICollectionViewDelegateFlowLayout,UIActionSheetDelegate,UINavigationControllerDelegate,UIImagePickerControllerDelegate>
+{
+    //个人图标
+    UIButton *imageBtn;
+    //名字
+    UILabel *labelName;
+    //等级
+    UILabel *labelRank;
+    //里程标签
+    UILabel *labelCourse;
+    //品币标签
+    UILabel *labelGold;
+    //数组
+    NSArray *collectArr;
+}
+@end
+
+@implementation PersonalViewController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    
+    self.navigationItem.title = @"个人中心";
+    
+    imageBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+    labelName = [[UILabel alloc]init];
+    labelRank = [[UILabel alloc]init];
+    labelCourse = [[UILabel alloc]init];
+    labelGold = [[UILabel alloc]init];
+    
+
+    collectArr = @[@{@"icon":@"23-2",@"title":@"个人资料"},@{@"icon":@"23-3",@"title":@"绑定手机"},@{@"icon":@"23-4",@"title":@"我的车友"},@{@"icon":@"23-5",@"title":@"服务代表"},@{@"icon":@"23-6",@"title":@"功能设置"},@{@"icon":@"23-7",@"title":@"我的收藏"}];
+    
+    UIButton *emailBtn = [UIButton buttonWithType:UIButtonTypeRoundedRect];
+    emailBtn.frame = CGRectMake(0, 0, 25, 20);
+    [emailBtn setBackgroundImage:[UIImage imageNamed:@"23-1"] forState:UIControlStateNormal];
+    [emailBtn addTarget:self action:@selector(rightButton) forControlEvents:UIControlEventTouchUpInside];
+    UIBarButtonItem *rightBtn = [[UIBarButtonItem alloc]initWithCustomView:emailBtn];
+    self.navigationItem.rightBarButtonItem = rightBtn;
+    
+    
+    
+    UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc]init];
+    layout.scrollDirection = UICollectionViewScrollDirectionVertical;
+    self.collectionView = [[UICollectionView alloc]initWithFrame:self.view.frame collectionViewLayout:layout];
+    self.collectionView.delegate = self;
+    self.collectionView.dataSource = self;
+    self.collectionView.backgroundColor = [UIColor colorWithRed:239/255.0 green:239/255.0 blue:239/255.0 alpha:1.0];
+    [self.collectionView registerClass:[PersonCollectionViewCell class] forCellWithReuseIdentifier:@"cellid"];
+    [self.collectionView registerClass:[UICollectionReusableView class] forSupplementaryViewOfKind:UICollectionElementKindSectionHeader withReuseIdentifier:@"headerId"];
+    [self.view addSubview:self.collectionView];
+}
+
+-(void)rightButton
+{
+    MyMessageTableViewController *myMessage = [[MyMessageTableViewController alloc]init];
+    [self.navigationController pushViewController:myMessage animated:YES];
+}
+
+-(void)viewWillAppear:(BOOL)animated{
+    [super viewWillAppear:animated];
+    //获取用户基本信息
+    [self getUserInfomation];
+    
+}
+-(void)getUserInfomation{
+    
+    AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+    manager.responseSerializer.acceptableContentTypes = [NSSet setWithObject:@"text/html"];
+    [manager.requestSerializer setValue:[[NSUserDefaults standardUserDefaults]objectForKey:COOKIE] forHTTPHeaderField:@"cookie"];
+    [manager GET:[NSString stringFollowBaseUrl:getUserInfo] parameters:nil progress:^(NSProgress * _Nonnull uploadProgress) {
+        
+    } success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        
+        NSDictionary *rootDic = responseObject;
+        self.resultDic = [rootDic objectForKey:@"data"];
+        if (self.resultDic.count>0) {
+            
+            [[NSUserDefaults standardUserDefaults]setValue:self.resultDic[@"avatar"] forKey:@"iconImagView"];
+            [[NSUserDefaults standardUserDefaults]synchronize];
+            
+            [imageBtn sd_setImageWithURL:self.resultDic[@"avatar"] forState:UIControlStateNormal];
+            //里程
+            labelCourse.text = [NSString stringWithFormat:@"%@",self.resultDic[@"extcredits1"]];
+            //品币
+            labelGold.text =  [NSString stringWithFormat:@"%@",self.resultDic[@"extcredits2"]];
+            //等级
+            labelRank.text = [NSString stringWithFormat:@"%@",self.resultDic[@"grouptitle"]];
+        }
+        
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        
+    }];
+}
+
+
+- (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout*)collectionViewLayout sizeForItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    return (CGSize){SCREEN_WIDTH/3-0.75,SCREEN_WIDTH/3-0.75};
+}
+
+-(UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    PersonCollectionViewCell *cell = (PersonCollectionViewCell *)[collectionView dequeueReusableCellWithReuseIdentifier:@"cellid" forIndexPath:indexPath];
+    cell.backgroundColor = [UIColor whiteColor];
+    NSDictionary *dic = collectArr[indexPath.row];
+    cell.iconViw.image = [UIImage imageNamed:[dic objectForKey:@"icon"]];
+    cell.titLabel.text = [dic objectForKey:@"title"];
+    return cell;
+}
+//设置cell点击高亮和非高亮效果
+-(BOOL)collectionView:(UICollectionView *)collectionView shouldHighlightItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    return YES;
+}
+
+-  (void)collectionView:(UICollectionView *)collectionView didHighlightItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    PersonCollectionViewCell *cell = (PersonCollectionViewCell *)[collectionView cellForItemAtIndexPath:indexPath];
+    [cell setBackgroundColor:[UIColor colorWithRed:239/255.0 green:239/255.0 blue:239/255.0 alpha:1.0]];
+}
+- (void)collectionView:(UICollectionView *)collectionView didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    PersonCollectionViewCell *cell = (PersonCollectionViewCell *)[collectionView cellForItemAtIndexPath:indexPath];
+    [cell setBackgroundColor:[UIColor whiteColor]];
+}
+
+-(NSInteger)numberOfSectionsInCollectionView:(UICollectionView *)collectionView
+{
+    return 1;
+}
+
+-(NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section{
+    return 6;
+}
+
+- (CGFloat)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout*)collectionViewLayout minimumLineSpacingForSectionAtIndex:(NSInteger)section
+{
+    return 1.f;
+}
+
+- (CGFloat)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout*)collectionViewLayout minimumInteritemSpacingForSectionAtIndex:(NSInteger)section
+{
+    return 1.f;
+}
+
+-(UICollectionReusableView *)collectionView:(UICollectionView *)collectionView viewForSupplementaryElementOfKind:(NSString *)kind atIndexPath:(NSIndexPath *)indexPath
+{
+    if ([kind isEqualToString:UICollectionElementKindSectionHeader]) {
+        UICollectionReusableView *headerView = [_collectionView dequeueReusableSupplementaryViewOfKind:kind withReuseIdentifier:@"headerId" forIndexPath:indexPath];
+        if (headerView == nil) {
+            headerView = [[UICollectionReusableView alloc]init];
+        }
+        headerView.backgroundColor = [UIColor whiteColor];
+        [self CreateHeadview:headerView];
+        return headerView;
+    }
+    return nil;
+}
+-(void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath{
+    switch (indexPath.row) {
+        case 0:
+        {
+            //个人资料；
+            PersonaldataTableViewController *pesonData = [[PersonaldataTableViewController alloc]init];
+            pesonData.navcTitle = [collectArr[indexPath.row] objectForKey:@"title"];
+            pesonData.dataDic = [NSDictionary dictionaryWithDictionary:self.resultDic];
+            [self.navigationController pushViewController:pesonData animated:YES];
+        }
+            break;
+        case 1:
+        {
+            //绑定手机
+            CheckPhoneViewController *check = [[CheckPhoneViewController alloc]init];
+            [self.navigationController pushViewController:check animated:YES];
+        }
+            break;
+            
+        case 2:
+        {
+            //我的车友
+//            EmulatorViewController *emulator = [[EmulatorViewController alloc]init];
+//            emulator.navctitle = @"我的车友";
+//            emulator.pngName = @"1029app";
+            MyCarViewController *myCar = [[MyCarViewController alloc]init];
+            
+            [self.navigationController pushViewController:myCar animated:YES];
+        }
+            break;
+        case 3:
+        {
+            //服务代表
+            ServiceRepresentativeTableViewController *ser = [[ServiceRepresentativeTableViewController alloc]init];
+            ser.navcTitle = [collectArr[indexPath.row] objectForKey:@"title"];
+            [self.navigationController pushViewController:ser animated:YES];
+        }
+            break;
+        case 4:
+        {
+            //功能设置
+            SetViewController *set = [[SetViewController alloc]init];
+            set.navcTitle = [collectArr[indexPath.row] objectForKey:@"title"];
+            [self.navigationController pushViewController:set animated:YES];
+        }
+            break;
+        case 5:
+        {
+            //我的收藏
+//            EmulatorViewController *emulator = [[EmulatorViewController alloc]init];
+//            emulator.navctitle = @"我的收藏";
+//            emulator.pngName = @"1030app";
+            FavoriteTableViewController *favorite = [[FavoriteTableViewController alloc]init];
+            [self.navigationController pushViewController:favorite animated:YES];
+        }
+            break;
+        default:
+            break;
+    }
+}
+
+- (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout*)collectionViewLayout referenceSizeForHeaderInSection:(NSInteger)section
+{
+    return (CGSize){SCREEN_WIDTH,SCREEN_HEIGHT-SCREEN_WIDTH/3*2-114};
+}
+
+-(void)CreateHeadview:(UICollectionReusableView *)headViewback
+{
+    CGFloat viewhight = headViewback.frame.size.height-1;
+    UIView *backview = [[UIView alloc]initWithFrame:CGRectMake(0, viewhight, SCREEN_WIDTH, 1)];
+    backview.backgroundColor = [UIColor colorWithRed:239/255.0 green:239/255.0 blue:239/255.0 alpha:1.0];
+    [headViewback addSubview:backview];
+    //图标按钮
+    imageBtn.bounds = CGRectMake(0, 0, viewhight/4, viewhight/4);
+    if (SCREEN_WIDTH>320) {
+        imageBtn.center = CGPointMake(SCREEN_WIDTH/2, viewhight/4);
+    }else{
+        imageBtn.center = CGPointMake(SCREEN_WIDTH/2, viewhight/5);
+    }
+    
+    imageBtn.layer.cornerRadius = viewhight/8;
+    imageBtn.layer.masksToBounds = YES;
+    [imageBtn addTarget:self action:@selector(showActivwSheet) forControlEvents:UIControlEventTouchUpInside];
+    [headViewback addSubview:imageBtn];
+    
+    
+    labelName.text = [[NSUserDefaults standardUserDefaults]stringForKey:USER_NAME];;
+    labelName.font = [UIFont systemFontOfSize:18];
+//    labelName.backgroundColor = [UIColor greenColor];
+    [headViewback addSubview:labelName];
+    labelName.sd_layout.topSpaceToView(imageBtn,5).heightIs(35).centerXEqualToView(imageBtn) ;
+    //宽度自适应
+    [labelName setSingleLineAutoResizeWithMaxWidth:SCREEN_WIDTH];
+    
+
+    labelRank.text = @"用户等级";
+    labelRank.font = [UIFont systemFontOfSize:14];
+    [headViewback addSubview:labelRank];
+    labelRank.sd_layout.topSpaceToView(labelName,0).heightIs(18).centerXEqualToView(labelName);
+    [labelRank setSingleLineAutoResizeWithMaxWidth:SCREEN_WIDTH];
+
+    UIButton *Lichen = [UIButton buttonWithType:UIButtonTypeCustom];
+    Lichen.layer.masksToBounds = YES;
+    Lichen.layer.cornerRadius = 18;
+    Lichen.layer.borderColor = [UIColor redColor].CGColor;
+    Lichen.layer.borderWidth = 2.0;
+    [Lichen setTitle:@"里程" forState:UIControlStateNormal];
+    [Lichen setTitleColor:[UIColor redColor] forState:UIControlStateNormal];
+    Lichen.titleLabel.font = [UIFont systemFontOfSize:15.0];
+    [headViewback addSubview:Lichen];
+    if (SCREEN_WIDTH>320) {
+        Lichen.sd_layout.topSpaceToView(labelRank,30).leftSpaceToView(headViewback,80).heightIs(35).widthIs(90);
+    }else{
+        Lichen.sd_layout.topSpaceToView(labelRank,20).leftSpaceToView(headViewback,60).heightIs(35).widthIs(90);
+    }
+    
+    
+    UIButton *Pinbi = [UIButton buttonWithType:UIButtonTypeCustom];
+    Pinbi.backgroundColor = [UIColor redColor];
+    Pinbi.layer.masksToBounds = YES;
+    Pinbi.layer.cornerRadius = 18;
+    [Pinbi setTitle:@"品币" forState:UIControlStateNormal];
+    Pinbi.titleLabel.font = [UIFont systemFontOfSize:15.0];
+    [headViewback addSubview:Pinbi];
+    if (SCREEN_WIDTH>320) {
+        Pinbi.sd_layout.topEqualToView(Lichen).rightSpaceToView(headViewback,80).heightIs(35).widthIs(90);
+    }else{
+        Pinbi.sd_layout.topEqualToView(Lichen).rightSpaceToView(headViewback,60).heightIs(35).widthIs(90);
+    }
+    
+    
+    labelCourse.text = @"0";
+    labelCourse.font = [UIFont boldSystemFontOfSize:16];
+    [headViewback addSubview:labelCourse];
+    labelCourse.sd_layout.topSpaceToView(Lichen,10).heightIs(30).centerXEqualToView(Lichen);
+    [labelCourse setSingleLineAutoResizeWithMaxWidth:SCREEN_WIDTH/3];
+    
+    
+    labelGold.text = @"0";
+    labelGold.font = [UIFont boldSystemFontOfSize:16];
+    [headViewback addSubview:labelGold];
+    labelGold.sd_layout.topEqualToView(labelCourse).heightRatioToView(labelCourse,1).centerXEqualToView(Pinbi);
+    [labelGold setSingleLineAutoResizeWithMaxWidth:SCREEN_WIDTH/3];
+    
+    
+    
+}
+
+
+
+-(void)showActivwSheet
+{
+    UIActionSheet *action = [[UIActionSheet alloc]initWithTitle:nil delegate:self cancelButtonTitle:@"取消" destructiveButtonTitle:nil otherButtonTitles:@"拍照",@"从相册选择", nil];
+    [action showInView:self.view];
+}
+-(void)actionSheet:(UIActionSheet *)actionSheet clickedButtonAtIndex:(NSInteger)buttonIndex
+{
+    if (buttonIndex == 0) {
+        //调用相机
+        UIImagePickerController * picker = [[UIImagePickerController alloc]init];
+        picker.delegate = self;
+        picker.allowsEditing = YES;  //是否可编辑
+        //摄像头
+        picker.sourceType = UIImagePickerControllerSourceTypeCamera;
+        [[UIApplication sharedApplication] setStatusBarHidden:YES];
+        [self presentViewController:picker animated:YES completion:nil];
+    }else if(buttonIndex == 1){
+        //调用相册
+        UIImagePickerController *picker = [[UIImagePickerController alloc]init];
+        picker.delegate = self;
+        picker.allowsEditing = YES;
+        //打开相册选择照片
+        picker.sourceType = UIImagePickerControllerSourceTypePhotoLibrary;
+        [self presentViewController:picker animated:YES completion:nil];
+    }
+}
+
+//拍摄完成后要执行的方法
+-(void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary<NSString *,id> *)info
+{
+    //    //图片存入相册
+    //    UIImageWriteToSavedPhotosAlbum(image123, nil, nil, nil);
+    //图片截取
+    UIImage *image = [info objectForKey:UIImagePickerControllerEditedImage];
+    [self dismissViewControllerAnimated:YES completion:^{
+        [[UIApplication sharedApplication] setStatusBarHidden:NO withAnimation:UIStatusBarAnimationFade];
+        [[UIApplication sharedApplication] setStatusBarStyle:UIStatusBarStyleLightContent];
+        [self upLoadPicture:image];
+    }];
+}
+-(void)upLoadPicture:(UIImage *)image
+{
+    [imageBtn setImage:image forState:UIControlStateNormal];
+    AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+    manager.responseSerializer.acceptableContentTypes = [NSSet setWithObject:@"text/html"];
+    [manager.requestSerializer setValue:[[NSUserDefaults standardUserDefaults]objectForKey:COOKIE] forHTTPHeaderField:@"cookie"];
+    NSLog(@"%@",[[NSUserDefaults standardUserDefaults]objectForKey:COOKIE]);
+    [manager POST:[NSString stringFollowBaseUrl:uploadpictureURL] parameters:nil constructingBodyWithBlock:^(id<AFMultipartFormData>  _Nonnull formData) {
+        
+        NSData * imageData = UIImageJPEGRepresentation(image, 0.3);
+        [formData appendPartWithFileData:imageData name:@"Filedata" fileName:@"123.png" mimeType:@"image/jpeg"];
+        
+    } progress:nil success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        NSLog(@"成功");
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        NSLog(@"失败");
+    }];
+}
+
+
+
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+
+@end

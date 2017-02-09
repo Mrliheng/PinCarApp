@@ -1,0 +1,462 @@
+//
+//  HomeTableViewController.m
+//  品车App
+//
+//  Created by fei on 16/10/17.
+//  Copyright © 2016年 fei. All rights reserved.
+//
+
+#import "HomeTableViewController.h"
+
+#import "AppDelegate.h"
+#import "LoginViewController.h"
+#import "HomeTableViewCell.h"
+#import <CoreLocation/CoreLocation.h>
+#import "CityTableViewController.h"
+#import "StoreViewController.h"
+#import "MBProgressHUD.h"
+
+
+#define pageNum 3  //每页显示的条数
+#define headerWidth 50 //头像的宽高
+#define xSpace headerWidth/2  //头像距离页面左边距
+#define ySpace 10  //头像距离页面上边距
+
+@interface HomeTableViewController ()<CLLocationManagerDelegate,UIWebViewDelegate,MBProgressHUDDelegate>
+{
+    //经度
+    CGFloat _longitude;
+    //纬度
+    CGFloat _latitude;
+    //页数
+    NSInteger _page;
+    //个人图标
+    UIButton *imageBtn;
+    //名字
+    UILabel *labelName;
+    //等级
+    UILabel *labelRank;
+    //里程标签
+    UILabel *labelCourse;
+    //品币标签
+    UILabel *labelGold;
+    
+    NSMutableArray *_dataArray;
+    CLLocationManager *_locationManager;
+    NSString *_cityName;
+    NSString *_cityId;
+    UIView *_headerView;
+    MBProgressHUD *progressHUD;
+
+    //是否定位成功
+    BOOL _isLocation;
+
+}
+@property (nonatomic,strong) UIWebView *webView;
+
+@end
+
+@implementation HomeTableViewController
+-(void)viewWillAppear:(BOOL)animated{
+    [super viewWillAppear:animated];
+    [self.navigationController.navigationBar setBackgroundImage:nil forBarMetrics:UIBarMetricsDefault];
+    if ([[NSUserDefaults standardUserDefaults]valueForKey:USER_NAME]) {
+        //获取用户基本信息
+        [self getUserInfomation];
+    }
+}
+-(void)getUserInfomation{
+    
+    AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+    manager.responseSerializer.acceptableContentTypes = [NSSet setWithObject:@"text/html"];
+    [manager.requestSerializer setValue:[[NSUserDefaults standardUserDefaults]objectForKey:COOKIE] forHTTPHeaderField:@"cookie"];
+    [manager GET:[NSString stringFollowBaseUrl:getUserInfo] parameters:nil progress:^(NSProgress * _Nonnull uploadProgress) {
+        
+    } success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        
+        NSDictionary *rootDic = responseObject;
+        if ([rootDic[@"code"]integerValue] == 0) {
+            NSDictionary *data = rootDic[@"data"];
+            [imageBtn sd_setImageWithURL:[NSURL URLWithString:data[@"avatar"]] forState:UIControlStateNormal];
+            labelName.text = [[NSUserDefaults standardUserDefaults]stringForKey:USER_NAME];
+            labelRank.text = [NSString stringWithFormat:@"%@",data[@"grouptitle"]];
+            labelCourse.text = [NSString stringWithFormat:@"%@",data[@"extcredits1"]];
+            labelGold.text = [NSString stringWithFormat:@"%@",data[@"extcredits2"]];
+            
+        }
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        
+    }];
+}
+- (void)viewDidLoad {
+    [super viewDidLoad];
+
+    _dataArray = [NSMutableArray array];
+    _page = 1;
+    [self startLocating];
+    self.navigationItem.title = @"首页";
+    _cityName = @"定位中";
+    
+    self.tableView.tableFooterView = [[UIView alloc]init];
+    self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
+    self.tableView.delegate = self;
+    self.tableView.dataSource = self;
+    
+    //默认【上拉加载】
+//    self.tableView.mj_footer = [MJRefreshAutoNormalFooter footerWithRefreshingTarget:self refreshingAction:@selector(loadMore)];
+    self.tableView.mj_footer = [MJRefreshBackNormalFooter footerWithRefreshingBlock:^{
+        if (!_isLocation) {
+            [self.tableView.mj_footer endRefreshing];
+
+            return ;
+        }
+        _page ++;
+        [self getData];
+        [self.tableView.mj_footer endRefreshing];
+
+    }];
+    
+    [self createItem:_cityName];
+
+    if(![[NSUserDefaults standardUserDefaults]valueForKey:USER_NAME]){
+
+        UIBarButtonItem *right = [[UIBarButtonItem alloc]initWithTitle:@"登录" style:UIBarButtonItemStyleDone target:self action:@selector(login)];
+        right.tintColor = [UIColor colorWithRed:249/255.0 green:66/255.0 blue:71/255.0 alpha:1];
+        self.navigationItem.rightBarButtonItem = right;
+
+    }
+    else{
+        
+        [self createHeaderView];
+    }
+
+
+    
+}
+-(void)loadMore{
+    _page ++;
+    [self getData];
+    [self.tableView.mj_footer endRefreshing];
+}
+#pragma mark --登录成功后的头视图
+-(void)createHeaderView
+{
+    
+    _headerView = [UIView new];
+    self.tableView.tableHeaderView = _headerView;
+    _headerView.backgroundColor = [UIColor groupTableViewBackgroundColor];
+    
+    //图标按钮
+    imageBtn = [UIButton new];
+    [_headerView addSubview:imageBtn];
+    
+    imageBtn.sd_layout
+    .leftSpaceToView(_headerView,xSpace)
+    .topSpaceToView(_headerView,ySpace)
+    .widthIs(headerWidth)
+    .heightIs(headerWidth);
+    imageBtn.layer.cornerRadius = headerWidth/2;
+    imageBtn.layer.masksToBounds = YES;
+    
+    labelName = [UILabel new];
+    labelName.font = [UIFont systemFontOfSize:18];
+    [_headerView addSubview:labelName];
+    labelName.sd_layout
+    .leftSpaceToView(imageBtn,xSpace)
+    .topEqualToView(imageBtn)
+    .heightIs(headerWidth/2.0)
+    .rightSpaceToView(_headerView,xSpace);
+    //宽度自适应
+//    [labelName setSingleLineAutoResizeWithMaxWidth:SCREEN_WIDTH - xSpace*2 - headerWidth];
+    
+    labelRank = [UILabel new];
+    labelRank.font = [UIFont systemFontOfSize:14];
+    [_headerView addSubview:labelRank];
+    labelRank.sd_layout
+    .leftEqualToView(labelName)
+    .topSpaceToView(labelName,0)
+    .heightIs(headerWidth/2.0)
+    .rightSpaceToView(_headerView,xSpace);
+    
+    UILabel *lineLabel = [UILabel new];
+    lineLabel.backgroundColor = [UIColor redColor];
+    [_headerView addSubview:lineLabel];
+    lineLabel.sd_layout
+    .topSpaceToView(imageBtn,ySpace)
+    .leftSpaceToView(_headerView,0)
+    .rightSpaceToView(_headerView,0)
+    .heightIs(1);
+    
+    UIButton *Lichen = [UIButton buttonWithType:UIButtonTypeCustom];
+    [_headerView addSubview:Lichen];
+
+    Lichen.layer.masksToBounds = YES;
+    Lichen.layer.cornerRadius = 15;
+    Lichen.layer.borderColor = [UIColor redColor].CGColor;
+    Lichen.layer.borderWidth = 2.0;
+    [Lichen setTitle:@"里程" forState:UIControlStateNormal];
+    [Lichen setTitleColor:[UIColor redColor] forState:UIControlStateNormal];
+    Lichen.titleLabel.font = [UIFont systemFontOfSize:15.0];
+    Lichen.sd_layout
+    .leftEqualToView(imageBtn)
+    .topSpaceToView(lineLabel,ySpace)
+    .widthIs(headerWidth)
+    .heightIs(30);
+    
+    UIButton *Pinbi = [UIButton buttonWithType:UIButtonTypeCustom];
+    Pinbi.backgroundColor = [UIColor redColor];
+    Pinbi.layer.masksToBounds = YES;
+    Pinbi.layer.cornerRadius = 15;
+    [Pinbi setTitle:@"品币" forState:UIControlStateNormal];
+    Pinbi.titleLabel.font = [UIFont systemFontOfSize:15.0];
+    [_headerView addSubview:Pinbi];
+    Pinbi.sd_layout
+    .leftSpaceToView(_headerView,SCREEN_WIDTH/2)
+    .topEqualToView(Lichen)
+    .heightIs(30)
+    .widthIs(headerWidth);
+    
+    labelCourse = [UILabel new];
+    labelCourse.font = [UIFont boldSystemFontOfSize:16];
+    [_headerView addSubview:labelCourse];
+    labelCourse.sd_layout
+    .leftSpaceToView(Lichen,10)
+    .topEqualToView(Lichen)
+    .heightIs(30)
+    .rightSpaceToView(Pinbi,10);
+
+    
+    
+
+    
+    
+    
+    labelGold = [UILabel new];
+    labelGold.font = [UIFont boldSystemFontOfSize:16];
+    [_headerView addSubview:labelGold];
+    labelGold.sd_layout
+    .leftSpaceToView(Pinbi,10)
+    .topEqualToView(Pinbi)
+    .heightIs(30)
+    .rightSpaceToView(_headerView,xSpace);
+    
+    [_headerView setupAutoHeightWithBottomView:labelGold bottomMargin:ySpace];
+    
+}
+
+-(void)getData{
+    
+    if(_page == 1){
+        
+        _dataArray = [NSMutableArray array];
+    }
+    AFSecurityPolicy *securityPolicy = [[AFSecurityPolicy alloc] init];
+    [securityPolicy setAllowInvalidCertificates:YES];
+    
+    AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+    manager.responseSerializer.acceptableContentTypes = [NSSet setWithObject:@"text/html"];
+    [manager.requestSerializer setValue:[[NSUserDefaults standardUserDefaults]objectForKey:COOKIE] forHTTPHeaderField:@"cookie"];
+    [manager setSecurityPolicy:securityPolicy];
+
+    NSInteger cityId = [_cityId integerValue];
+    NSDictionary *paramDic;
+    NSString *point = [NSString stringWithFormat:@"%f,%f",_longitude,_latitude];
+    if (_cityId.length > 0) {
+        paramDic = @{@"area":[NSNumber numberWithInteger:cityId],@"page":[NSNumber numberWithInteger:_page],@"point":point};
+        //@"num":@pageNum,
+    }
+    [manager POST:[NSString stringFollowBaseUrl:getStoreList] parameters:paramDic progress:^(NSProgress * _Nonnull uploadProgress) {
+        
+    } success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        
+        NSDictionary *rootDic = responseObject;
+        NSArray *arr = rootDic[@"data"];
+        if (arr.count <= 0 && _page!=1) {
+            _page--;
+            return ;
+        }
+        else if (arr.count <=0 && _page == 1){
+            [self.tableView reloadData];
+            return;
+        }
+        [_dataArray addObjectsFromArray: rootDic[@"data"]];
+        if (_dataArray.count > 0  || [[NSUserDefaults standardUserDefaults]stringForKey:USER_NAME]) {
+            
+//            _webView.hidden = YES;
+            [self.tableView reloadData];
+        }
+
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        
+    }];
+}
+-(void)webViewDidFinishLoad:(UIWebView *)webView{
+    progressHUD.hidden = YES;
+    
+}
+-(void)login{
+    
+    AppDelegate *app = (AppDelegate *)[UIApplication sharedApplication].delegate;
+    LoginViewController *login = [[LoginViewController alloc]init];
+    app.window.rootViewController = [[UINavigationController alloc]initWithRootViewController:login];
+    
+}
+-(NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{
+    return _dataArray.count;
+}
+-(UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath{
+    
+    HomeTableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"id"];
+    if (!cell) {
+        cell = [[HomeTableViewCell alloc]initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"id"];
+    }
+    if (_dataArray.count == 0) {
+        return cell;
+    }
+    NSDictionary *dic = _dataArray[indexPath.row];
+    [cell setCellWithIcon:dic[@"img"] withTitle:dic[@"name"] withDistance:dic[@"distance"]];
+    return cell;
+}
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath{
+    return [self cellHeightForIndexPath:indexPath cellContentViewWidth:SCREEN_WIDTH];
+}
+
+-(void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath{
+    
+    StoreViewController *store = [[StoreViewController alloc]init];
+    NSDictionary *dic = _dataArray[indexPath.row];
+    store.navTitle = dic[@"name"];
+    store.dealerId = dic[@"id"];
+    [[NSUserDefaults standardUserDefaults]setValue:dic[@"id"] forKey:DEALER_ID];
+    [[NSUserDefaults standardUserDefaults]synchronize];
+    [self.navigationController pushViewController:store animated:YES];
+    
+}
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+
+#pragma mark --开启定位
+-(void)startLocating{
+    
+    if ([CLLocationManager locationServicesEnabled]) {
+        
+        _locationManager = [[CLLocationManager alloc]init];
+        
+        //设置定位的精度
+        [_locationManager setDesiredAccuracy:kCLLocationAccuracyBest];
+        //设置距离筛选器distanceFilter，下面表示设备至少移动100米，才通知委托更新
+        _locationManager.distanceFilter = 100.0f;
+        _locationManager.delegate = self;
+        if ([[[UIDevice currentDevice] systemVersion] floatValue] > 8.0)
+        {
+            [_locationManager requestAlwaysAuthorization];
+            [_locationManager requestWhenInUseAuthorization];
+        }
+        //开始实时定位
+        [_locationManager startUpdatingLocation];
+    }
+}
+-(void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status
+{
+    _longitude = manager.location.coordinate.longitude;
+    _latitude = manager.location.coordinate.latitude;
+    NSLog(@"Longitude = %f", manager.location.coordinate.longitude);
+    NSLog(@"Latitude = %f", manager.location.coordinate.latitude);
+    [_locationManager stopUpdatingLocation];
+    
+    CLGeocoder * geoCoder = [[CLGeocoder alloc] init];
+    [geoCoder reverseGeocodeLocation:manager.location completionHandler:^(NSArray *placemarks, NSError *error) {
+        if (placemarks.count <= 0) {
+            _cityName = @"定位失败";
+            [self getData];
+            [self createItem:_cityName];
+            _isLocation = NO;
+            return ;
+//            [self.tableView reloadData];
+        }
+        
+        _isLocation = YES;
+        for (CLPlacemark * placemark in placemarks) {
+            NSDictionary *test = [placemark addressDictionary];
+            //  Country(国家)  State(城市)  SubLocality(区)
+            NSLog(@"%@", [test objectForKey:@"Country"]);
+            NSLog(@"%@", [test objectForKey:@"State"]);
+            if([[test objectForKey:@"State"] isEqualToString:@"北京市"] || [[test objectForKey:@"State"] isEqualToString:@"重庆市"] || [[test objectForKey:@"State"] isEqualToString:@"天津市"] || [[test objectForKey:@"State"] isEqualToString:@"上海市"]){
+                
+                _cityName = [test objectForKey:@"State"];
+
+            }
+            else{
+                _cityName = [test objectForKey:@"SubLocality"];
+
+            }
+            NSLog(@"%@", [test objectForKey:@"SubLocality"]);
+
+            [self createItem:_cityName];
+            [self getCityIdFrom:_cityName];
+            [self getData];
+            NSLog(@"%@", [test objectForKey:@"Street"]);
+        }
+    }];
+}
+-(void)createItem:(NSString *)cityName{
+    
+    
+    UIButton *left = [UIButton buttonWithType:UIButtonTypeCustom];
+    left.frame = CGRectMake(0, 0, 65, 64);
+    left.titleLabel.font = [UIFont systemFontOfSize:14];
+    [left setTitle:_cityName forState:UIControlStateNormal];
+    [left setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
+    //按钮图片不让自动渲染
+    [left setImage:[[UIImage imageNamed:@"21-4"] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal] forState:UIControlStateNormal];
+    //将按钮的图标和文字交换位置
+    [left setTitleEdgeInsets:UIEdgeInsetsMake(0, -left.imageView.bounds.size.width-2, 0, left.imageView.bounds.size.width)];
+    [left setImageEdgeInsets:UIEdgeInsetsMake(0, left.titleLabel.bounds.size.width, 0, -left.titleLabel.bounds.size.width-2)];
+    left.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
+    
+    [left addTarget:self action:@selector(selectCity) forControlEvents:UIControlEventTouchUpInside];
+    UIBarButtonItem *leftItem = [[UIBarButtonItem alloc]initWithCustomView:left];
+    UIBarButtonItem *nagetiveSpacer = [[UIBarButtonItem alloc]initWithBarButtonSystemItem:UIBarButtonSystemItemFixedSpace target:nil action:nil];
+    nagetiveSpacer.width = -10;//这个值可以根据自己需要自己调整
+    self.navigationItem.leftBarButtonItems = @[nagetiveSpacer, leftItem];
+
+}
+-(void)selectCity{
+    
+    CityTableViewController *city = [[CityTableViewController alloc]init];
+    
+    city.locationBlock = ^(NSString *city){
+        
+        _cityName = city;
+        [self createItem:_cityName];
+        [self getCityIdFrom:_cityName];
+        _page = 1;
+        [self getData];
+    };
+    
+    UINavigationController *navc = [[UINavigationController alloc]initWithRootViewController:city];
+    [self presentViewController:navc animated:YES completion:nil];
+}
+
+#pragma mark --根据城市名称获取城市id
+-(void)getCityIdFrom:(NSString *)cityName{
+    
+    NSString *Path = [[NSBundle mainBundle]pathForResource:@"city" ofType:@"json"];
+    NSArray *array = [NSJSONSerialization JSONObjectWithData:[NSData dataWithContentsOfFile:Path] options:NSJSONReadingAllowFragments error:nil];
+    
+    for (NSDictionary *subDic in array) {
+        NSArray *subArr = subDic[@"city"];
+        for (NSDictionary *subCity in subArr) {
+            if ([cityName isEqualToString:subCity[@"name"]]) {
+                
+                _cityId = subCity[@"id"];
+                break;
+            }
+        }
+    }
+}
+
+@end

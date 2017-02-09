@@ -1,0 +1,188 @@
+//
+//  PrefixHeader.pch
+//  品车App
+//
+//  Created by fei on 16/10/17.
+//  Copyright © 2016年 fei. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+
+#ifndef PrefixHeader_pch
+#define PrefixHeader_pch
+
+#import "AFNetworking.h"
+#import "SDAutoLayout.h"
+#import "NSString+category.h"
+#import "UIImageView+WebCache.h"
+#import "UIView+UIView.h"
+#import "UIButton+category.h"
+#import "ConfigureSetting.h"
+#import "SDCycleScrollView.h"
+#import "UIButton+WebCache.h"
+#import "MJRefresh.h"
+
+
+#pragma mark --NSUserdefault存储字段
+#define USER_NAME @"user_name"   //存储用户名
+#define USER_PWD @"user_pwd"   //存储密码
+#define SAVE_PWD @"save_pwd"  //记住密码
+#define COOKIE @"cookie"    //保存cookie
+#define DEALER_ID @"dealerId" //经销商id
+
+// Include any system framework and library headers here that should be included in all compilation units.
+// You will also need to set the Prefix Header build setting of one or more of your targets to reference this file.
+
+#define SCREEN_HEIGHT   ([[UIScreen mainScreen] bounds].size.height)
+#define SCREEN_WIDTH    ([[UIScreen mainScreen] bounds].size.width)
+
+
+//#define baseURLs @"http://218.241.158.193/discuz"
+#define baseURLs @"http://118.178.227.119"
+
+
+
+
+#define cityURL @"/api.php?mod=getAllArea"
+/**
+ 获取消息列表
+ */
+#define getMsgList @"/api.php?mod=getPmList"
+/**
+ 获取我的收藏
+ */
+#define myFavoriteURL @"/api.php?mod=getFavoriteList"
+/**
+ 添加好友
+ */
+#define addFriendsURL @"/home.php?mod=spacecp&ac=friend&op=add&ajaxdata=newjson&addsubmit=true"
+/**
+ 找回密码
+ */
+#define finPWD @"/api.php?mod=resetPassword"
+/**
+ 获取用户二维码
+ */
+#define getQRCode @"/api.php?mod=getUserQrcode"
+/**
+ 收藏
+ */
+#define likeUrl @"/home.php?mod=spacecp&ac=favorite&type=thread&infloat=yes&handlekey=k_favorite&ajaxdata=newjson&favoritesubmit=1"
+/**
+ 点赞
+ */
+#define supportUrl @"/forum.php?mod=misc&action=recommend&do=add&ajaxmenu=1&ajaxdata=newjson"
+/**
+ 获取销售代表/售后的电话等信息
+ */
+#define getSellerList @"/api.php?mod=getSellerList"
+/**
+ 随机获取一个销售电话
+ */
+#define getASellerTel @"/api.php?mod=getSeller"
+/**
+ 获取经销商首页的车型信息
+ */
+#define getCarInfo @"/api.php?mod=getDealerCars"
+/***
+ 获取用户基本信息
+ */
+#define getUserInfo @"/api.php?mod=getUserBaseInfo"
+/**
+ 除轮播图以外的底部三个图的信息
+ */
+#define getIndexInfo @"/api.php?mod=getIndexInfo"
+/**
+获取经销商轮播图
+ */
+#define getScrollImages @"/api.php?mod=getDealerSlide"
+/**
+ 获取经销商店列表
+ */
+#define getStoreList @"/api.php?mod=getGroupList"
+/**
+ 注册接口
+ */
+#define registURL @"/api.php?mod=register"
+/**
+ 登录接口
+ */
+#define loginURL @"/api.php?mod=logging&action=login"
+/**
+ 退出接口
+ */
+#define exitURL @"/api.php?mod=logging&action=logout"
+/**
+ 论坛展示页
+ */
+#define forumURL @"/api.php?mod=getForumList"
+/**
+ 论坛二级列表展示页面
+ */
+#define listTabURL @"/api.php?mod=getThreadList"
+/**
+  获取板块主题分类
+  */
+#define platetimURL @"/api.php?mod=getThreadClass"
+/**
+ 发送手机验证码
+ */
+#define phonetestURL @"/api.php?mod=sendSMS"
+/**
+ 上传用户图像
+ */
+#define uploadpictureURL @"/api.php?mod=postPhoto"
+
+/**
+ 用户发布帖子钱上传图片
+ */
+#define invitalimageURL @"/misc.php?mod=swfupload&operation=upload&simple=1&type=image&ajaxdata=json"
+
+/**
+ 用户发布帖子
+ */
+#define postinvitationURL @"/api.php?mod=newThread"
+
+/**
+ 实名认证
+ */
+#define boundphonenumbURL @"/api.php?mod=verifyPhone"
+
+/**
+ 修改用户密码
+ */
+#define resetpasswordURL @"/api.php?mod=resetPassword"
+
+/**
+ 修改用户信息
+ */
+#define changepersonalmessageURL @"/api.php?mod=editUserBaseInfo"
+
+/**
+ 获取好友列表
+ */
+#define getfriendlistURL @"/api.php?mod=getFriendList"
+
+/**
+ 获取好友请求列表
+ */
+#define getrequestlistURL @"/api.php?mod=getRequestList"
+
+/**
+ 确认好友请求列表
+ */
+#define confirmationfriemURL @"/home.php?mod=spacecp&ac=friend&op=add&ajaxdata=newjson&add2submit=true"
+
+
+/**
+ 给销售代表留言（聊天页面发送按钮也用）
+ */
+#define voiceMessageURL @"/home.php?mod=spacecp&ac=pm&op=send&pmsubmit=yes&pmsubmit=true&ajaxdata=newjson"
+
+/**
+ 获取两个用户的对话列表
+ */
+#define getpmlistoneURL @"/api.php?mod=getPmListOne"
+
+
+#endif /* PrefixHeader_pch */

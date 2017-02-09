@@ -1,0 +1,211 @@
+//
+//  MessageViewController.m
+//  品车App
+//
+//  Created by zt on 2016/10/20.
+//  Copyright © 2016年 fei. All rights reserved.
+//
+
+#import "MessageViewController.h"
+#import "TelToPersonTableViewCell.h"
+
+#define textSpace 5        //文本框的文字距文本框左边的距离
+#define nameHeight 50 //姓名和电话的高度
+#define nameWidth 50  //姓名和电话的宽度
+#define xSpace 10
+#define height 70
+#define lineSpace 1
+#define btnWidth 100 //提交按钮的宽
+#define fontSize 17 //姓名，电话，提交的字体大小
+@interface MessageViewController ()
+{
+    TelToPersonTableViewCell *cell;
+    NSString *_dealerId;
+    NSDictionary *_perDic;
+}
+
+@property (nonatomic,strong)UITextView *textView;
+
+@property (nonatomic,strong)UITextField *nameText;
+@property (nonatomic,strong)UITextField *telText;
+
+@end
+
+@implementation MessageViewController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.view.backgroundColor = [UIColor groupTableViewBackgroundColor];
+    self.title = @"留言";
+    [self createUI];
+    [self getData];
+
+}
+-(void)getData{
+    AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+    manager.responseSerializer.acceptableContentTypes = [NSSet setWithObject:@"text/html"];
+    [manager.requestSerializer setValue:[[NSUserDefaults standardUserDefaults]objectForKey:COOKIE] forHTTPHeaderField:@"cookie"];
+    _dealerId = [[NSUserDefaults standardUserDefaults]stringForKey:DEALER_ID];
+    NSInteger dealerId = [_dealerId integerValue];
+    NSNumber *dealerNum = [NSNumber numberWithInteger:dealerId];
+    [manager GET:[NSString stringFollowBaseUrl:getASellerTel] parameters:@{@"dealerid":dealerNum} progress:^(NSProgress * _Nonnull uploadProgress) {
+        
+    } success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        
+        NSDictionary *rootDic = responseObject;
+        if ([rootDic[@"code"] integerValue] == 0) {
+            
+            NSArray *data = rootDic[@"data"];
+            if (data.count >0) {
+                NSDictionary *perDic = data[0];
+                _perDic = perDic;
+                [cell setCellWithIcon:[NSString stringWithFormat:@"%@",perDic[@"avtar"]] withBigTitle:[NSString stringWithFormat:@"%@",perDic[@"username"]] withSmallTitle:@"销售代表" withTelButton:[UIImage imageNamed:@"11-13"] withRow:0];
+                [cell setCellWithIcon:[NSString stringWithFormat:@"%@",perDic[@"avtar"]] withBigTitle:@"Tom" withSmallTitle:@"销售代表" withTelButton:[UIImage imageNamed:@"11-13"] withRow:0];
+            }
+            
+        }
+        
+        
+        
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        
+        NSLog(@"%@",error);
+    }];
+}
+-(void)createUI{
+    
+    //创建最上面的textView
+    UITextView *textView = [UITextView new];
+    [self.view addSubview:textView];
+    _textView = textView;
+    
+    
+    //创建中间的提交按钮
+    UIView *submitView = [UIView new];
+    submitView.backgroundColor = [UIColor whiteColor];
+    [self.view addSubview:submitView];
+    UIButton *submitButton = [UIButton new];
+    submitButton.backgroundColor = [UIColor redColor];
+    submitButton.layer.masksToBounds = YES;
+    submitButton.layer.cornerRadius = (height - 2*xSpace) / 2;
+    [submitButton setTitle:@"提交" forState:UIControlStateNormal];
+    submitButton.titleLabel.font = [UIFont systemFontOfSize:fontSize];
+    [submitView addSubview:submitButton];
+    
+    //创建最下面的随机出现的销售代表
+    cell = [[TelToPersonTableViewCell alloc]initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"id"];
+    cell.backgroundColor = [UIColor whiteColor];
+    [self.view addSubview:cell];
+    
+    cell.sd_layout
+    .leftSpaceToView(self.view,xSpace)
+    .bottomSpaceToView(self.view,xSpace)
+    .rightSpaceToView(self.view,xSpace)
+    .heightIs(height);
+//    [cell setupAutoHeightWithBottomView:self.view bottomMargin:0];
+    
+    submitView.sd_layout
+    .leftEqualToView(cell)
+    .bottomSpaceToView(cell,lineSpace)
+    .rightEqualToView(cell)
+    .heightIs(height);
+    
+    submitButton.sd_layout
+    .topSpaceToView(submitView,xSpace)
+    .bottomSpaceToView(submitView,xSpace)
+    .widthIs(btnWidth)
+    .centerXEqualToView(submitView);
+    
+    if (!_isLogin) {
+        //如果没有登录，则显示出姓名和电话
+        UILabel *nameLabel = [UILabel new];
+        nameLabel.text = @"姓名:";
+        nameLabel.textAlignment = NSTextAlignmentRight;
+        nameLabel.backgroundColor = [UIColor whiteColor];
+        nameLabel.font = [UIFont systemFontOfSize:fontSize];
+        [self.view addSubview:nameLabel];
+        
+        _nameText = [UITextField new];
+        _nameText.backgroundColor = [UIColor whiteColor];
+        _nameText.leftView = [[UIView alloc]initWithFrame:CGRectMake(0, 0, textSpace, 0)];
+        _nameText.leftViewMode = UITextFieldViewModeAlways;
+        _nameText.font = [UIFont systemFontOfSize:fontSize];
+        [self.view addSubview:_nameText];
+        
+        UILabel *telLabel = [UILabel new];
+        telLabel.text = @"电话:";
+        telLabel.textAlignment = NSTextAlignmentRight;
+        telLabel.backgroundColor = [UIColor whiteColor];
+        telLabel.font = [UIFont systemFontOfSize:fontSize];
+        [self.view addSubview:telLabel];
+        
+        _telText = [UITextField new];
+        _telText.backgroundColor = [UIColor whiteColor];
+        _telText.leftView = [[UIView alloc]initWithFrame:CGRectMake(0, 0, textSpace, 0)];
+        _telText.leftViewMode = UITextFieldViewModeAlways;
+        [self.view addSubview:_telText];
+        _telText.font = [UIFont systemFontOfSize:fontSize];
+        _telText.keyboardType = UIKeyboardTypePhonePad;
+        
+        telLabel.sd_layout
+        .leftSpaceToView(self.view,xSpace)
+        .bottomSpaceToView(submitView,lineSpace)
+        .widthIs(nameWidth)
+        .heightIs(nameHeight);
+    
+        _telText.sd_layout
+        .leftSpaceToView(telLabel,0)
+        .rightEqualToView(submitView)
+        .heightIs(nameHeight)
+        .bottomEqualToView(telLabel);
+        
+        nameLabel.sd_layout
+        .leftEqualToView(telLabel)
+        .bottomSpaceToView(telLabel,lineSpace)
+        .heightIs(nameHeight)
+        .widthIs(nameWidth);
+        
+        _nameText.sd_layout
+        .leftSpaceToView(nameLabel,0)
+        .rightEqualToView(submitView)
+        .heightIs(nameHeight)
+        .bottomEqualToView(nameLabel);
+        
+        textView.sd_layout
+        .leftEqualToView(cell)
+        .topSpaceToView(self.view,xSpace)
+        .rightEqualToView(cell)
+        .bottomSpaceToView(nameLabel,lineSpace);
+    }
+    else{
+        textView.sd_layout
+        .leftEqualToView(cell)
+        .topSpaceToView(self.view,xSpace)
+        .rightEqualToView(cell)
+        .bottomSpaceToView(submitView,lineSpace);
+
+    }
+    
+    
+//    __weak typeof (NSDictionary *)weakDic = _perDic;
+    cell.block = ^(NSInteger row){
+        
+//        NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"tel://%@",weakDic[@"mobile"]]];
+        NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"tel://18600016401"]];
+        
+        [[UIApplication sharedApplication] openURL:url];
+    };
+
+    
+}
+-(IBAction)dismissKeyBoard
+{
+    [_textView resignFirstResponder];
+}
+
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+}
+
+
+@end

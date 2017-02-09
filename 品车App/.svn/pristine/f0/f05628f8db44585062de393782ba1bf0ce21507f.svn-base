@@ -1,0 +1,89 @@
+//
+//  NavigationController.m
+//  BMWTraining
+//
+//  Created by fei on 15/11/30.
+//  Copyright © 2015年 fei. All rights reserved.
+//
+
+#import "NavigationController.h"
+
+@interface NavigationController ()<UIGestureRecognizerDelegate>
+
+@end
+
+@implementation NavigationController
+
+- (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
+{
+    self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
+    if (self) {
+        // Custom initialization
+    }
+    return self;
+}
+
+-(void)viewWillDisappear:(BOOL)animated{
+    [super viewWillDisappear:animated];
+    self.interactivePopGestureRecognizer.delegate = nil;
+}
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.navigationBar.translucent = NO;
+
+    self.navigationBar.backgroundColor = [UIColor whiteColor];
+    
+    self.interactivePopGestureRecognizer.delegate = self;
+
+//    if (SCREEN_WIDTH<=320) {
+//
+//        [self.navigationBar setBackgroundImage:[UIImage imageNamed:@""] forBarMetrics:UIBarMetricsDefault];
+//    }
+//    else{
+//        [self.navigationBar setBackgroundImage:[UIImage imageNamed:@""] forBarMetrics:UIBarMetricsDefault];
+//    }
+
+    
+    
+}
+
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+/**
+ *  重写这个方法目的：能够拦截所有push进来的控制器
+ *
+ *  @param viewController 即将push进来的控制器
+ */
+- (void)pushViewController:(UIViewController *)viewController animated:(BOOL)animated
+{
+    
+    if (self.viewControllers.count > 0) { // 这时push进来的控制器viewController，不是第一个子控制器（不是根控制器）
+        /* 自动显示和隐藏tabbar */
+        viewController.hidesBottomBarWhenPushed = YES;
+        
+        UIButton *backBtn = [UIButton buttonWithType:UIButtonTypeRoundedRect];
+        backBtn.frame = CGRectMake(0, 0, 15, 10);
+        [backBtn addTarget:self action:@selector(back) forControlEvents:UIControlEventTouchUpInside];
+        [backBtn setBackgroundImage:[UIImage imageNamed:@"back_black"] forState:UIControlStateNormal];
+        UIBarButtonItem *leftbutton = [[UIBarButtonItem alloc]initWithCustomView:backBtn];
+        viewController.navigationItem.leftBarButtonItem = leftbutton;
+        
+    }
+    if (![[super topViewController] isKindOfClass:[viewController class]]) {
+        [super pushViewController:viewController animated:animated];
+    }
+
+    
+}
+
+- (void)back
+{
+    // 因为self本来就是一个导航控制器，self.navigationController这里是nil的
+    [self popViewControllerAnimated:YES];
+}
+
+
+@end
